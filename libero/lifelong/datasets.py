@@ -38,6 +38,10 @@ def get_dataset(
         dataset_path=dataset_path, all_obs_keys=all_obs_keys, verbose=False
     )
 
+    load_specific_num = None
+    if 'load_specific_num' in kwargs.keys():
+        load_specific_num = kwargs['load_specific_num']
+
     seq_len = seq_len
     filter_key = filter_key
     dataset = SequenceDataset(
@@ -54,7 +58,8 @@ def get_dataset(
         hdf5_cache_mode=hdf5_cache_mode,  # cache dataset in memory to avoid repeated file i/o
         hdf5_use_swmr=False,
         hdf5_normalize_obs=None,
-        filter_by_attribute=filter_key,  # can optionally provide a filter key here
+        filter_by_attribute=filter_key,
+        load_specific_num=load_specific_num # can optionally provide a filter key here
     )
     return dataset, shape_meta
 

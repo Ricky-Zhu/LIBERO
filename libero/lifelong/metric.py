@@ -192,6 +192,19 @@ def evaluate_multitask_training_success(cfg, algo, benchmark, task_ids):
         successes.append(success_rate)
     return np.array(successes)
 
+def evaluate_pretrain_multitask_training_success(cfg, algo, benchmark, task_ids):
+    """
+    Evaluate the success rate for all task in task_ids.
+    """
+    algo.eval()
+    successes = []
+    for i in task_ids:
+        task_i = benchmark.get_task(i)
+        task_emb = benchmark.get_task_emb(i)
+        success_rate = evaluate_one_task_success(cfg, algo, task_i, task_emb, i)
+        successes.append(success_rate)
+    return np.array(successes)
+
 
 @torch.no_grad()
 def evaluate_loss(cfg, algo, benchmark, datasets):

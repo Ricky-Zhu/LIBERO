@@ -101,7 +101,7 @@ class BasePolicy(nn.Module, metaclass=PolicyMeta):
         if train_mode:  # apply augmentation
             if self.cfg.train.use_augmentation:
                 img_tuple = self._get_img_tuple(data)
-                aug_out = self._get_aug_output_dict(self.img_aug(img_tuple))
+                aug_out = self._get_aug_output_dict(self.img_aug(img_tuple)) # add augmentation to the images
                 for img_name in self.image_encoders.keys():
                     data["obs"][img_name] = aug_out[img_name]
             return data

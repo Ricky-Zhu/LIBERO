@@ -34,7 +34,7 @@ from libero.lifelong.utils import (
 )
 
 
-@hydra.main(config_path="../configs", config_name="config", version_base=None)
+@hydra.main(config_path="../libero/configs", config_name="config", version_base=None)
 def main(hydra_cfg):
     # preprocessing
     yaml_config = OmegaConf.to_yaml(hydra_cfg)
@@ -267,6 +267,6 @@ def main(hydra_cfg):
 
 if __name__ == "__main__":
     # Set the multiprocessing start method to 'spawn'
-    # if multiprocessing.get_start_method(allow_none=True) != "spawn":
-    #     multiprocessing.set_start_method("spawn", force=True)
+    if multiprocessing.get_start_method(allow_none=True) != "spawn":
+        multiprocessing.set_start_method("spawn", force=True)
     main()
