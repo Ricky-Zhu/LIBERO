@@ -53,7 +53,7 @@ class Attention(nn.Module):
             elif len(mask.shape) == 3 and mask.shape[0] == 1:  # (1, N, N)
                 attn = attn.masked_fill(~mask[None, :, :, :], float("-inf"))
             elif (
-                len(mask.shape) == 3
+                    len(mask.shape) == 3
             ):  # Consider the case where each batch has different causal mask, typically useful for MAE implementation
                 attn = attn.masked_fill(
                     ~mask[:, None, :, :].repeat(1, self.num_heads, 1, 1), float("-inf")
@@ -72,21 +72,23 @@ class TransformerFeedForwardNN(nn.Module):
     def __init__(self, dim, hidden_dim, dropout=0.0):
         super().__init__()
         # Remember the residual connection
-        layers = [
-            nn.Linear(dim, hidden_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim, dim),
-            nn.Dropout(dropout),
-        ]
-        self.net = nn.Sequential(*layers)
+
+        self.l1 = nn.Linear(dim, hidden_dim)
+        self.gelu1 = nn.GELU()
+        self.dp1 = nn.Dropout(dropout)
+        self.l2 = nn.Linear(hidden_dim, dim)
+        self.dp2 = nn.Dropout(dropout)
 
     def forward(self, x):
-        return self.net(x)
+        x = self.gelu1(self.l1(x))
+        x = self.dp1(x)
+        x = self.l2(x)
+        x = self.dp2(x)
+        return x
 
 
 def drop_path(
-    x, drop_prob: float = 0.0, training: bool = False, scale_by_keep: bool = True
+        x, drop_prob: float = 0.0, training: bool = False, scale_by_keep: bool = True
 ):
     """Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
     This is the same as the DropConnect impl I created for EfficientNet, etc networks, however,
@@ -99,7 +101,7 @@ def drop_path(
         return x
     keep_prob = 1 - drop_prob
     shape = (x.shape[0],) + (1,) * (
-        x.ndim - 1
+            x.ndim - 1
     )  # work with diff dim tensors, not just 2D ConvNets
     random_tensor = x.new_empty(shape).bernoulli_(keep_prob)
     if keep_prob > 0.0 and scale_by_keep:
@@ -128,7 +130,7 @@ class SinusoidalPositionEncoding(nn.Module):
         channels = int(np.ceil(channels / 2) * 2)
 
         inv_freq = 1.0 / (
-            self.inv_freq_factor ** (torch.arange(0, channels, 2).float() / channels)
+                self.inv_freq_factor ** (torch.arange(0, channels, 2).float() / channels)
         )
         self.channels = channels
         self.register_buffer("inv_freq", inv_freq)
@@ -161,14 +163,14 @@ class SinusoidalPositionEncoding(nn.Module):
 
 class TransformerDecoder(nn.Module):
     def __init__(
-        self,
-        input_size,
-        num_layers,
-        num_heads,
-        head_output_size,
-        mlp_hidden_size,
-        dropout,
-        **kwargs
+            self,
+            input_size,
+            num_layers,
+            num_heads,
+            head_output_size,
+            mlp_hidden_size,
+            dropout,
+            **kwargs
     ):
         super().__init__()
 
@@ -204,17 +206,16 @@ class TransformerDecoder(nn.Module):
     def compute_mask(self, input_shape):
         # input_shape = (:, seq_len, num_elements)
         if (
-            (self.num_elements is None)
-            or (self.seq_len is None)
-            or (self.num_elements != input_shape[2])
-            or (self.seq_len != input_shape[1])
+                (self.num_elements is None)
+                or (self.seq_len is None)
+                or (self.num_elements != input_shape[2])
+                or (self.seq_len != input_shape[1])
         ):
-
             self.seq_len = input_shape[1]
             self.num_elements = input_shape[2]
             self.original_mask = (
-                torch.triu(torch.ones(self.seq_len, self.seq_len))
-                - torch.eye(self.seq_len, self.seq_len)
+                    torch.triu(torch.ones(self.seq_len, self.seq_len))
+                    - torch.eye(self.seq_len, self.seq_len)
             ).to(self.device)
             self.mask = 1 - self.original_mask.repeat_interleave(
                 self.num_elements, dim=-1
