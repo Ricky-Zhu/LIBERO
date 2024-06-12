@@ -47,6 +47,7 @@ if __name__ == "__main__":
         help="verbose output",
     )
     args = parser.parse_args()
+    args.dataset = "/home/ruiqi/projects/LIBERO/libero/datasets/libero_object/pick_up_the_alphabet_soup_and_place_it_in_the_basket_demo.hdf5"
 
     # extract demonstration list from file
     filter_key = args.filter_key
