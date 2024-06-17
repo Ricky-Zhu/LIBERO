@@ -54,11 +54,13 @@ class PatchEncoder(nn.Module):
                               kernel_size=patch_size,
                               stride=patch_size)
 
+        self.bn = nn.BatchNorm2d(embed_size)
+
     def forward(self, x):
         B, C, H, W = x.shape
         x = self.conv(x)
         # x = self.proj(x)
-        # x = self.bn(x)
+        x = self.bn(x)
         return x
 
 
