@@ -22,39 +22,43 @@ class PatchEncoder(nn.Module):
     """
 
     def __init__(
-        self, input_shape, patch_size=[16, 16], embed_size=64, no_patch_embed_bias=False
+            self, input_shape, patch_size=[16, 16], embed_size=64, no_patch_embed_bias=False
     ):
         super().__init__()
         C, H, W = input_shape
-        num_patches = (H // patch_size[0] // 2) * (W // patch_size[1] // 2)
+        num_patches = (H // patch_size[0]) * (W // patch_size[1])
         self.img_size = (H, W)
         self.patch_size = patch_size
         self.num_patches = num_patches
-        self.h, self.w = H // patch_size[0] // 2, W // patch_size[1] // 2
+        # self.h, self.w = H // patch_size[0] // 2, W // patch_size[1] // 2
 
-        self.conv = nn.Sequential(
-            nn.Conv2d(
-                C, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False
-            ),
-            nn.BatchNorm2d(
-                64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True
-            ),
-            nn.ReLU(inplace=True),
-        )
-        self.proj = nn.Conv2d(
-            64,
-            embed_size,
-            kernel_size=patch_size,
-            stride=patch_size,
-            bias=False if no_patch_embed_bias else True,
-        )
-        self.bn = nn.BatchNorm2d(embed_size)
+        # self.conv = nn.Sequential(
+        #     nn.Conv2d(
+        #         C, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False
+        #     ),
+        #     nn.BatchNorm2d(
+        #         64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True
+        #     ),
+        #     nn.ReLU(inplace=True),
+        # )
+        # self.proj = nn.Conv2d(
+        #     64,
+        #     embed_size,
+        #     kernel_size=patch_size,
+        #     stride=patch_size,
+        #     bias=False if no_patch_embed_bias else True,
+        # )
+        # self.bn = nn.BatchNorm2d(embed_size)
+        self.conv = nn.Conv2d(in_channels=C,
+                              out_channels=embed_size,
+                              kernel_size=patch_size,
+                              stride=patch_size)
 
     def forward(self, x):
         B, C, H, W = x.shape
         x = self.conv(x)
-        x = self.proj(x)
-        x = self.bn(x)
+        # x = self.proj(x)
+        # x = self.bn(x)
         return x
 
 
@@ -112,7 +116,7 @@ class SpatialProjection(nn.Module):
         super().__init__()
 
         assert (
-            len(input_shape) == 3
+                len(input_shape) == 3
         ), "[error] spatial projection: input shape is not a 3-tuple"
         in_c, in_h, in_w = input_shape
         num_kp = out_dim // 2
@@ -149,15 +153,15 @@ class ResnetEncoder(nn.Module):
     """
 
     def __init__(
-        self,
-        input_shape,
-        output_size,
-        pretrained=False,
-        freeze=False,
-        remove_layer_num=2,
-        no_stride=False,
-        language_dim=768,
-        language_fusion="film",
+            self,
+            input_shape,
+            output_size,
+            pretrained=False,
+            freeze=False,
+            remove_layer_num=2,
+            no_stride=False,
+            language_dim=768,
+            language_fusion="film",
     ):
 
         super().__init__()
@@ -165,12 +169,12 @@ class ResnetEncoder(nn.Module):
         ### 1. encode input (images) using convolutional layers
         assert remove_layer_num <= 5, "[error] please only remove <=5 layers"
         layers = list(torchvision.models.resnet18(pretrained=pretrained).children())[
-            :-remove_layer_num
-        ]
+                 :-remove_layer_num
+                 ]
         self.remove_layer_num = remove_layer_num
 
         assert (
-            len(input_shape) == 3
+                len(input_shape) == 3
         ), "[error] input shape of resnet should be (C, H, W)"
 
         in_channels = input_shape[0]
