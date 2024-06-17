@@ -20,7 +20,7 @@ from libero.lifelong.models.bc_transformer_policy import ExtraModalityTokens
 
 def reshape_transform(tensor, h, w):
     B, _, E = tensor.shape
-    result = tensor[:, 1 : 1 + h * w, :].reshape(B, h, w, E)
+    result = tensor[:, 1: 1 + h * w, :].reshape(B, h, w, E)
     return result.permute(0, 3, 1, 2)
 
 
@@ -145,6 +145,51 @@ class BCViLTPolicy(BasePolicy):
             x, self.encoders[0].h, self.encoders[1].w
         )
 
+    # @torch.no_grad()
+    def get_spatial_summary(self, data):
+        # 1. encode image
+
+        img_encoded = []
+        for img_name in self.image_encoders.keys():
+            img_encoded.append(
+                rearrange(
+                    TensorUtils.time_distributed(
+                        data["obs"][img_name], self.image_encoders[img_name]["encoder"]
+                    ),
+                    "b t c h w -> b t (h w) c",
+                )
+            )  # add img_h: (B, T, num_patches, E)
+        img_encoded = torch.cat(img_encoded, -2)  # (B, T, 2*num_patches, E)
+        img_encoded += self.patch_pos_embed.unsqueeze(0)  # (B, T, 2*num_patches, E)
+        B, T = img_encoded.shape[:2]
+
+        # 2. encode task_emb
+        text_encoded = self.language_encoder_spatial(data)  # (B, E)
+        text_encoded = text_encoded.view(B, 1, 1, -1).expand(
+            -1, T, -1, -1
+        )  # (B, T, 1, E)
+
+        # 3. concat img + text embs then add modality embeddings
+        img_text_encoded = torch.cat(
+            [img_encoded, text_encoded], -2
+        )  # (B, T, 2*num_patches+1, E)
+        img_text_encoded += self.modality_embed[
+                            None, :, self.modality_idx, :
+                            ]  # same as above
+
+        # 4. add spatial token
+        spatial_token = self.spatial_token.unsqueeze(0).expand(
+            B, T, -1, -1
+        )  # (B, T, 1, E)
+        encoded = torch.cat([spatial_token, img_text_encoded], -2)  # (B, T, :, E)
+
+        # 5. pass through transformer
+        encoded = rearrange(encoded, "b t n e -> (b t) n e")  # (B*T, :, E)
+        out = self.spatial_transformer.forward(encoded, vis=True)
+        out = out[:, 0]  # extract spatial token as summary at o_t
+        out_down_sampled = self.spatial_down_sample(out).view(B, T, 1, -1)  # (B, T, 1, E')
+        return self.spatial_transformer.attention_output
+
     def spatial_encode(self, data):
         # 1. encode image
         img_encoded = []
@@ -172,8 +217,8 @@ class BCViLTPolicy(BasePolicy):
             [img_encoded, text_encoded], -2
         )  # (B, T, 2*num_patches+1, E)
         img_text_encoded += self.modality_embed[
-            None, :, self.modality_idx, :
-        ]  # same as above
+                            None, :, self.modality_idx, :
+                            ]  # same as above
 
         # 4. add spatial token
         spatial_token = self.spatial_token.unsqueeze(0).expand(
