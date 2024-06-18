@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
+from torchvision import transforms
 
 
 ###############################################################################
@@ -26,10 +27,15 @@ class PatchEncoder(nn.Module):
     ):
         super().__init__()
         C, H, W = input_shape
-        num_patches = (H // patch_size[0]) * (W // patch_size[1])
+        num_patches = (224 // patch_size[0]) * (224 // patch_size[1])
         self.img_size = (H, W)
         self.patch_size = patch_size
         self.num_patches = num_patches
+
+        self.transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+        ])
         # self.h, self.w = H // patch_size[0] // 2, W // patch_size[1] // 2
 
         # self.conv = nn.Sequential(
@@ -58,6 +64,7 @@ class PatchEncoder(nn.Module):
 
     def forward(self, x):
         B, C, H, W = x.shape
+        x = self.transform(x)
         x = self.conv(x)
         # x = self.proj(x)
         x = self.bn(x)
