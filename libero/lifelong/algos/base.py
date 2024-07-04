@@ -110,7 +110,10 @@ class Sequential(nn.Module, metaclass=AlgoMeta):
         """
         data = self.map_tensor_to_device(data)
         self.optimizer.zero_grad()
-        loss = self.policy.compute_loss(data)
+        if self.cfg.multi_gpu:
+            loss = self.policy.module.compute_loss(data)
+        else:
+            loss = self.policy.compute_loss(data)
         (self.loss_scale * loss).backward()
         if self.cfg.train.grad_clip is not None:
             grad_norm = nn.utils.clip_grad_norm_(
